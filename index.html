@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0B1528" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Memory Mate</title>
+  <!-- PWA Manifest placeholder (upgraded dynamically to a Blob URL for older Android Chrome like Vivo Y71) -->
+  <link id="pwaManifestLink" rel="manifest" href='data:application/manifest+json,{"name":"Memory Mate","short_name":"Memory Mate","start_url":".","display":"standalone","background_color":"#0B1528","theme_color":"#0B1528","icons":[{"src":"https://placehold.co/192x192/0F766E/FFFFFF?text=MM","sizes":"192x192","type":"image/png"},{"src":"https://placehold.co/512x512/0F766E/FFFFFF?text=MM","sizes":"512x512","type":"image/png"}]}' />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            cream: {
+              50: '#FAF9F6',
+              100: '#F3F1EC',
+              200: '#E6E2D8',
+            },
+            tealCalm: {
+              50: '#F0FDFA',
+              100: '#CCFBF1',
+              600: '#0D9488',
+              700: '#0F766E',
+              800: '#115E59',
+              900: '#134E4A',
+            },
+            amberWarm: {
+              50: '#FFFBEB',
+              100: '#FEF3C7',
+              600: '#D97706',
+              700: '#B45309',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      background-color: #0B1528;
+      color: #F1F5F9;
+      -webkit-tap-highlight-color: transparent;
+      font-size: 18px;
+      line-height: 1.5;
+    }
+
+    /* Gentle breathing pulse animation when recording */
+    @keyframes calmPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 0 22px rgba(220, 38, 38, 0);
+        transform: scale(1.03);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+        transform: scale(1);
+      }
+    }
+
+    .listening-pulse {
+      animation: calmPulse 2.2s infinite ease-in-out;
+    }
+
+    /* Smooth slide-down for gentle reminder banner */
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .banner-enter {
+      animation: slideDown 0.35s ease-out forwards;
+    }
+
+    /* Custom scrollbar for clean mobile look */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center bg-[#0B1528] text-slate-100 selection:bg-tealCalm-100 selection:text-slate-900">
+
+  <!-- App Shell Container (Mobile-first max-width resembling native Android app) -->
+  <div class="w-full max-w-lg min-h-screen flex flex-col bg-[#0F1E36] shadow-2xl border-x border-slate-800/80 relative">
+
+    <!-- Top App Header -->
+    <header class="sticky top-0 z-30 bg-[#0F1E36]/95 backdrop-blur-md border-b border-slate-800 px-5 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-tealCalm-600 text-white flex items-center justify-center shadow-sm">
+          <!-- Heart / Brain Care Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-2xl font-extrabold tracking-tight text-white leading-tight">Memory Mate</h1>
+          <p id="todayDateLabel" class="text-sm font-medium text-sky-200/80">Today</p>
+        </div>
+      </div>
+
+      <!-- Caregiver / Settings Button -->
+      <div class="flex items-center gap-2">
+        <button
+          id="installAppBtn"
+          aria-label="Install App"
+          class="hidden px-3.5 py-2.5 rounded-2xl bg-tealCalm-600 hover:bg-tealCalm-700 active:scale-95 transition text-white font-bold text-sm shadow-xs"
+        >
+          📲 Install
+        </button>
+        <button
+          id="openSettingsBtn"
+          aria-label="Caregiver Settings"
+          class="p-3 rounded-2xl bg-[#162847] hover:bg-[#1E355C] active:scale-95 transition text-slate-100 border border-slate-700/80 flex items-center gap-1.5 font-semibold text-base"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span class="hidden sm:inline">Caregiver</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Gentle Reassuring In-App Reminder Banner (Hidden by default) -->
+    <div id="gentleReminderBanner" class="hidden mx-4 mt-4 p-5 rounded-3xl bg-amberWarm-50 border-2 border-amberWarm-600 shadow-lg banner-enter z-20">
+      <div class="flex items-start gap-3.5">
+        <div class="w-12 h-12 rounded-2xl bg-amberWarm-100 text-amberWarm-700 flex items-center justify-center shrink-0 mt-0.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <span class="inline-block text-xs font-bold uppercase tracking-wider text-amberWarm-700 bg-amberWarm-100 px-2.5 py-1 rounded-lg mb-1">
+            Gentle Memory Note
+          </span>
+          <h2 id="reminderBannerTitle" class="text-xl font-bold text-slate-900">Reminder</h2>
+          <p id="reminderBannerText" class="text-lg text-slate-800 mt-1 leading-snug">
+            Earlier today you noted a reminder.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2.5">
+            <button
+              id="readReminderAloudBtn"
+              class="px-4 py-2.5 rounded-xl bg-amberWarm-600 hover:bg-amberWarm-700 text-white font-bold text-base flex items-center gap-2 shadow-sm active:scale-95 transition"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+              Read Aloud
+            </button>
+            <button
+              id="dismissReminderBtn"
+              class="px-4 py-2.5 rounded-xl bg-white hover:bg-cream-100 text-slate-800 border border-slate-300 font-bold text-base active:scale-95 transition"
+            >
+              Got It, Thanks
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Browser Notification Permission Prompt Banner -->
+    <div id="notifPermissionBanner" class="hidden mx-4 mt-4 p-4 rounded-2xl bg-tealCalm-50 border border-tealCalm-600/30 flex items-center justify-between gap-3">
+      <p class="text-base font-medium text-tealCalm-900">
+        Allow gentle phone alerts so you never miss a reminder?
+      </p>
+      <button
+        id="enableNotifBtn"
+        class="shrink-0 px-4 py-2.5 rounded-xl bg-tealCalm-700 hover:bg-tealCalm-800 text-white font-bold text-base active:scale-95 transition"
+      >
+        Turn On
+      </button>
+    </div>
+
+    <!-- Status Toast Message Box (Replaces alert()) -->
+    <div id="statusToast" class="hidden mx-4 mt-3 px-4 py-3 rounded-2xl bg-slate-800 text-white text-base font-medium shadow-md text-center"></div>
+
+    <!-- Prominent Processing Progress Bar Banner -->
+    <div id="processingBarContainer" class="hidden mx-4 mt-4 p-4 rounded-2xl bg-tealCalm-50 border-2 border-tealCalm-600 shadow-sm space-y-2.5">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <span class="w-3 h-3 rounded-full bg-tealCalm-600 animate-ping"></span>
+          <span id="processingBarLabel" class="text-base font-extrabold text-tealCalm-900">Processing conversation...</span>
+        </div>
+        <span id="processingBarPercent" class="text-sm font-bold text-tealCalm-700">35%</span>
+      </div>
+      <div class="w-full h-3 bg-tealCalm-100 rounded-full overflow-hidden">
+        <div id="processingBarFill" class="h-full bg-tealCalm-700 rounded-full transition-all duration-300 ease-out" style="width: 35%;"></div>
+      </div>
+    </div>
+
+    <!-- Main Content Scroll Area -->
+    <main class="flex-1 px-5 pt-6 pb-24 space-y-8">
+
+      <!-- Primary Capture Section -->
+      <section aria-label="Record Conversation" class="flex flex-col items-center text-center bg-[#152642] rounded-3xl p-6 shadow-lg border border-slate-700/70">
+        <div id="statusBadge" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-950/80 text-teal-200 border border-teal-700/60 font-bold text-base mb-5">
+          <span id="statusDot" class="w-3 h-3 rounded-full bg-teal-400"></span>
+          <span id="statusLabel">Ready to Listen</span>
+        </div>
+
+        <!-- Giant Accessible Central Button -->
+        <button
+          id="recordToggleBtn"
+          class="w-48 h-48 rounded-full bg-tealCalm-600 hover:bg-tealCalm-700 text-white shadow-xl flex flex-col items-center justify-center gap-2 transition-all duration-200 active:scale-95 focus:outline-none focus:ring-4 focus:ring-teal-400/40"
+        >
+          <svg id="micIcon" xmlns="http://www.w3.org/2000/svg" class="w-14 h-14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
+          <svg id="stopIcon" xmlns="http://www.w3.org/2000/svg" class="w-14 h-14 hidden" fill="currentColor" viewBox="0 0 24 24">
+            <rect x="6" y="6" width="12" height="12" rx="2.5" />
+          </svg>
+          <span id="recordBtnText" class="text-2xl font-extrabold leading-tight">Start<br/>Listening</span>
+        </button>
+
+        <p id="helperInstruction" class="mt-4 text-base text-sky-100/80 max-w-xs">
+          Tap the green circle when someone starts talking with you.
+        </p>
+
+        <!-- Live Transcript Box (Shown during active speech or fallback entry) -->
+        <div id="liveCaptureBox" class="hidden w-full mt-5 text-left bg-[#0F1E36] rounded-2xl p-4 border-2 border-teal-500/50">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-sm font-bold uppercase tracking-wider text-teal-300">Hearing Now...</span>
+            <span class="text-xs font-semibold text-sky-200/70">Auto-summarizes on stop</span>
+          </div>
+          <p id="liveTranscriptText" class="text-lg text-white min-h-[3.5rem] italic">
+            Listening for voices...
+          </p>
+        </div>
+
+        <!-- Fallback & Demo Controls (Works without microphone permissions) -->
+        <div class="w-full mt-6 pt-5 border-t border-slate-700/70 flex flex-col sm:flex-row gap-2.5 justify-center">
+          <button
+            id="trySampleBtn"
+            class="flex-1 py-3 px-4 rounded-2xl bg-[#1C3257] hover:bg-[#24406E] text-white font-bold text-base border border-slate-600/70 transition active:scale-95"
+          >
+            ✨ Try Sample Talk
+          </button>
+          <button
+            id="toggleTypeNoteBtn"
+            class="flex-1 py-3 px-4 rounded-2xl bg-[#1C3257] hover:bg-[#24406E] text-white font-bold text-base border border-slate-600/70 transition active:scale-95"
+          >
+            ✍️ Type / Paste Note
+          </button>
+        </div>
+
+        <!-- Expandable Manual Text Input Area -->
+        <div id="manualInputPanel" class="hidden w-full mt-4 text-left space-y-3 bg-[#0F1E36] p-4 rounded-2xl border border-slate-700">
+          <label for="manualTranscriptInput" class="block text-base font-bold text-sky-100">
+            Type or paste what was discussed:
+          </label>
+          <textarea
+            id="manualTranscriptInput"
+            rows="3"
+            placeholder="Example: Daughter Priya called and said we have a checkup with Dr. Sharma tomorrow at 10 AM."
+            class="w-full p-3.5 rounded-xl border border-slate-600 text-lg text-white placeholder-slate-400 bg-[#152642] focus:outline-none focus:ring-2 focus:ring-teal-400"
+          ></textarea>
+          <div class="flex gap-2">
+            <button
+              id="saveManualNoteBtn"
+              class="flex-1 py-3 px-4 rounded-xl bg-tealCalm-600 hover:bg-tealCalm-700 text-white font-bold text-lg shadow-sm active:scale-95 transition"
+            >
+              Summarize & Save
+            </button>
+            <button
+              id="cancelManualBtn"
+              class="py-3 px-4 rounded-xl bg-[#1C3257] border border-slate-600 text-slate-200 font-semibold text-base"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Active Scheduled Reminders Bar (if any pending) -->
+      <section id="scheduledRemindersSection" class="hidden space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amberWarm-600"></span>
+            Upcoming Gentle Reminders
+          </h2>
+        </div>
+        <div id="scheduledRemindersList" class="space-y-2.5"></div>
+      </section>
+
+      <!-- Recent Memories Timeline -->
+      <section aria-label="Recent Memories" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-2xl font-extrabold text-white">Recent Memories</h2>
+          <span id="memoryCountBadge" class="text-sm font-bold px-3 py-1 rounded-full bg-[#1C3257] text-sky-200 border border-slate-700">
+            0 saved
+          </span>
+        </div>
+
+        <!-- Cards Container -->
+        <div id="memoriesContainer" class="space-y-4"></div>
+      </section>
+
+    </main>
+
+    <!-- Caregiver & Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div class="w-full max-w-lg bg-white text-slate-900 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl border border-cream-200 max-h-[90vh] overflow-y-auto space-y-6">
+        <div class="flex items-center justify-between border-b border-cream-200 pb-4">
+          <div>
+            <h2 class="text-2xl font-extrabold text-slate-900">Caregiver Settings</h2>
+            <p class="text-sm text-slate-600">Manage reminders, privacy & voice options</p>
+          </div>
+          <button id="closeSettingsBtn" class="p-2.5 rounded-xl bg-cream-100 hover:bg-cream-200 text-slate-800 font-bold">
+            ✕
+          </button>
+        </div>
+
+        <!-- PIN Lock Gate (Visible if PIN protection is active & locked) -->
+        <div id="pinGateSection" class="hidden space-y-4 py-4 text-center">
+          <p class="text-lg font-bold text-slate-800">Enter 4-Digit Caregiver PIN</p>
+          <p class="text-sm text-slate-500">(Default PIN is 1234)</p>
+          <input
+            id="pinInput"
+            type="password"
+            maxlength="4"
+            inputmode="numeric"
+            placeholder="••••"
+            class="w-40 mx-auto text-center tracking-[0.5em] text-2xl font-bold p-3 rounded-2xl border-2 border-slate-300 focus:border-tealCalm-600 focus:outline-none"
+          />
+          <p id="pinErrorMsg" class="hidden text-red-600 font-semibold text-base">Incorrect PIN. Try 1234.</p>
+          <div>
+            <button id="unlockPinBtn" class="px-6 py-3 rounded-xl bg-tealCalm-700 text-white font-bold text-lg">
+              Unlock Settings
+            </button>
+          </div>
+        </div>
+
+        <!-- Settings Controls -->
+        <div id="settingsControls" class="space-y-5">
+          <!-- Gemini API Key for Hosted / Netlify Summarization -->
+          <div class="p-4 rounded-2xl bg-cream-50 border border-cream-200 space-y-2.5">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Gemini API Key (For Summarizing)</h3>
+              <p class="text-sm text-slate-600">Stored locally on this device so Netlify deployments can summarize talks with Gemini AI.</p>
+            </div>
+            <input
+              id="geminiApiKeyInput"
+              type="password"
+              autocomplete="off"
+              placeholder="Paste AIza... Gemini API key"
+              class="w-full p-3 rounded-xl bg-white border border-slate-300 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-tealCalm-600"
+            />
+            <button
+              id="saveApiKeyBtn"
+              type="button"
+              class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-base active:scale-95 transition"
+            >
+              Save API Key
+            </button>
+          </div>
+
+          <!-- Voice & Accent Selector (Indian English Default) -->
+          <div class="p-4 rounded-2xl bg-tealCalm-50 border border-tealCalm-600/30 space-y-3">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Voice & Accent (Read Aloud)</h3>
+              <p class="text-sm text-slate-700">Defaults to Indian English (en-IN) when available on your device.</p>
+            </div>
+            <select
+              id="voiceSelect"
+              aria-label="Choose Voice and Accent"
+              class="w-full p-3.5 rounded-xl bg-white border-2 border-tealCalm-600/40 text-base font-semibold text-slate-900 focus:outline-none focus:border-tealCalm-700"
+            >
+              <option value="">Loading Indian English voices...</option>
+            </select>
+            <button
+              id="testVoiceBtn"
+              type="button"
+              class="w-full py-3 px-4 rounded-xl bg-tealCalm-700 hover:bg-tealCalm-800 text-white font-bold text-base flex items-center justify-center gap-2 shadow-xs active:scale-95 transition"
+            >
+              <span>🔊 Test Selected Voice</span>
+            </button>
+          </div>
+
+          <!-- Test Gentle Reminder -->
+          <div class="p-4 rounded-2xl bg-amberWarm-50 border border-amberWarm-600/30 space-y-2.5">
+            <h3 class="text-lg font-bold text-slate-900">Test Gentle Alert</h3>
+            <p class="text-base text-slate-700">Preview how a calm chime and reassuring reminder appear on screen.</p>
+            <button
+              id="triggerDemoReminderBtn"
+              class="w-full py-3 px-4 rounded-xl bg-amberWarm-600 hover:bg-amberWarm-700 text-white font-bold text-base shadow-sm active:scale-95 transition"
+            >
+              🔔 Trigger Gentle Reminder Now
+            </button>
+          </div>
+
+          <!-- Toggle: Auto-delete raw transcript -->
+          <label class="flex items-center justify-between gap-4 p-4 rounded-2xl bg-cream-50 border border-cream-200 cursor-pointer">
+            <div>
+              <span class="block text-lg font-bold text-slate-900">Privacy Mode (Summary Only)</span>
+              <span class="block text-sm text-slate-600">Discard raw spoken transcripts after creating the short summary.</span>
+            </div>
+            <input id="privacyToggle" type="checkbox" checked class="w-6 h-6 accent-tealCalm-700 rounded" />
+          </label>
+
+          <!-- Toggle: Caregiver PIN Lock -->
+          <label class="flex items-center justify-between gap-4 p-4 rounded-2xl bg-cream-50 border border-cream-200 cursor-pointer">
+            <div>
+              <span class="block text-lg font-bold text-slate-900">Protect Settings with PIN</span>
+              <span class="block text-sm text-slate-600">Prevent accidental changes (PIN: 1234).</span>
+            </div>
+            <input id="pinLockToggle" type="checkbox" class="w-6 h-6 accent-tealCalm-700 rounded" />
+          </label>
+
+          <!-- Reset Demo Data -->
+          <div class="pt-2 border-t border-cream-200 flex flex-col gap-2.5">
+            <button
+              id="restoreSampleDataBtn"
+              class="w-full py-3 px-4 rounded-xl bg-cream-100 hover:bg-cream-200 text-slate-800 font-bold text-base"
+            >
+              Restore Starter Sample Memories
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. STATE & CONSTANTS
+      // =========================================================================
+      const STORAGE_KEY = 'memory_companion_notes_v1';
+      const SETTINGS_KEY = 'memory_companion_settings_v1';
+
+      const SAMPLE_CONVERSATIONS = [
+        "Hi Mom, it's Priya. Just calling to remind you that Dr. Sharma's eye checkup is tomorrow at 10:30 AM. I will pick you up at 10 AM sharp.",
+        "Hello Dad, Rohan here. I brought your blood pressure tablets and kept the blue box on the kitchen counter. Please take one after dinner at 8 PM.",
+        "Hi, my name is Abhiraj. The doctor told me to get your evening medicine today at 6:00 PM from the pharmacy."
+      ];
+
+      const STARTER_MEMORIES = [
+        {
+          id: 'starter-1',
+          timestamp: Date.now() - 1000 * 60 * 45,
+          title: 'Talk with Daughter Priya',
+          summary: 'Priya called to confirm your eye checkup with Dr. Sharma tomorrow morning and will pick you up from home.',
+          actionItem: 'Be ready at 10:00 AM tomorrow for Dr. Sharma’s checkup',
+          rawTranscript: null,
+          reminderTime: null,
+          reminderLabel: null
+        }
+      ];
+
+      let memories = [];
+      let settings = {
+        privacySummaryOnly: true,
+        pinLockEnabled: false,
+        pinCode: '1234',
+        selectedVoiceURI: '',
+        geminiApiKey: ''
+      };
+
+      let isListening = false;
+      let recognition = null;
+      let mediaRecorder = null;
+      let mediaStream = null;
+      let audioChunks = [];
+      let capturedTranscript = '';
+      let currentUtteranceText = '';
+      let restartTimeout = null;
+      let sampleIndex = 0;
+      let activeTimers = {};
+// ... existing code ... -->
+      function setupSpeechRecognition() {
+        // Keep SpeechRecognition available only if MediaRecorder is completely unsupported
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return;
+
+        recognition = new SpeechRecognition();
+        recognition.lang = 'en-IN';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event) => {
+          let latestTranscript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            latestTranscript += event.results[i][0].transcript + ' ';
+          }
+          currentUtteranceText = latestTranscript.trim();
+          liveTranscriptText.textContent = currentUtteranceText || 'Listening continuously...';
+          liveTranscriptText.classList.remove('italic');
+        };
+
+        recognition.onerror = (event) => {
+          if (event.error === 'no-speech' || event.error === 'aborted') return;
+          stopListening(false);
+          showToast('Could not access microphone.');
+        };
+
+        recognition.onend = () => {
+          if (isListening) {
+            try { recognition.start(); } catch (e) {}
+          }
+        };
+      }
+
+      async function startListening() {
+        capturedTranscript = '';
+        currentUtteranceText = '';
+        audioChunks = [];
+        liveTranscriptText.textContent = 'Microphone continuously open — speak anytime, tap Stop when done...';
+        liveTranscriptText.classList.add('italic');
+
+        // Prefer continuous MediaRecorder so Android (especially Vivo Y71) never closes/reopens the mic during silence
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof MediaRecorder !== 'undefined') {
+          try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+              }
+            });
+
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+              ? 'audio/webm;codecs=opus'
+              : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
+
+            mediaRecorder = mimeType
+              ? new MediaRecorder(mediaStream, { mimeType })
+              : new MediaRecorder(mediaStream);
+
+            mediaRecorder.ondataavailable = (e) => {
+              if (e.data && e.data.size > 0) {
+                audioChunks.push(e.data);
+              }
+            };
+
+            mediaRecorder.start(500);
+            isListening = true;
+            updateListeningUI(true);
+            return;
+          } catch (err) {
+            showToast('Microphone permission denied or unavailable.');
+            return;
+          }
+        }
+
+        // Fallback to SpeechRecognition if MediaRecorder is unavailable
+        if (!recognition) {
+          showToast('Live mic is not available in this browser. Try "Type / Paste Note".');
+          return;
+        }
+
+        try {
+          isListening = true;
+          updateListeningUI(true);
+          recognition.start();
+        } catch (err) {
+          isListening = false;
+          updateListeningUI(false);
+        }
+      }
+
+      function stopListening(shouldSave) {
+        isListening = false;
+        if (restartTimeout) {
+          clearTimeout(restartTimeout);
+          restartTimeout = null;
+        }
+        updateListeningUI(false);
+
+        // Handle continuous MediaRecorder stop
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          const activeRecorder = mediaRecorder;
+          const activeStream = mediaStream;
+          mediaRecorder = null;
+          mediaStream = null;
+
+          activeRecorder.onstop = async () => {
+            if (activeStream) {
+              activeStream.getTracks().forEach((t) => t.stop());
+            }
+            if (!shouldSave || audioChunks.length === 0) return;
+
+            const audioBlob = new Blob(audioChunks, { type: activeRecorder.mimeType || 'audio/webm' });
+            audioChunks = [];
+            await transcribeAndProcessAudioBlob(audioBlob);
+          };
+
+          try {
+            activeRecorder.stop();
+          } catch (e) {}
+          return;
+        }
+
+        // Handle SpeechRecognition fallback stop
+        if (recognition) {
+          try { recognition.stop(); } catch (e) {}
+        }
+
+        const finalCleanText = (capturedTranscript + ' ' + currentUtteranceText).trim();
+        capturedTranscript = '';
+        currentUtteranceText = '';
+
+        if (shouldSave && finalCleanText.length > 2) {
+          processConversation(finalCleanText);
+        } else if (shouldSave) {
+          showToast('No speech detected. Try speaking closer or use "Type / Paste Note".');
+        }
+      }
+
+      async function transcribeAndProcessAudioBlob(audioBlob) {
+        const apiKey = (settings.geminiApiKey || '').trim();
+        if (!apiKey) {
+          showToast('Add your Gemini API Key in Caregiver settings to transcribe recorded audio.');
+          return;
+        }
+
+        setProcessingBar(true, 'Transcribing voice recording...', 35);
+        try {
+          const base64Audio = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const result = reader.result || '';
+              resolve(result.split(',')[1] || '');
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(audioBlob);
+          });
+
+          const models = ['gemini-3.1-flash-lite', 'gemini-3-flash-preview'];
+          let transcriptText = '';
+
+          for (const model of models) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            const resp = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: 'Transcribe this Indian English conversation accurately into clean text. Return only the spoken words.' },
+                    {
+                      inlineData: {
+                        mimeType: audioBlob.type || 'audio/webm',
+                        data: base64Audio
+                      }
+                    }
+                  ]
+                }]
+              })
+            });
+
+            if (resp.ok) {
+              const data = await resp.json();
+              transcriptText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+              if (transcriptText) break;
+            }
+          }
+
+          if (transcriptText && transcriptText.length > 2) {
+            await processConversation(transcriptText, true);
+          } else {
+            setProcessingBar(false);
+            showToast('Could not hear clear speech. Please try again.');
+          }
+        } catch (err) {
+          setProcessingBar(false);
+          showToast('Audio transcription failed. Check your connection.');
+        }
+      }
+
+      // =========================================================================
+      // 2. DOM ELEMENTS & INITIALIZATION
+      // =========================================================================
+      const todayDateLabel = document.getElementById('todayDateLabel');
+      const recordToggleBtn = document.getElementById('recordToggleBtn');
+      const recordBtnText = document.getElementById('recordBtnText');
+      const micIcon = document.getElementById('micIcon');
+      const stopIcon = document.getElementById('stopIcon');
+      const statusBadge = document.getElementById('statusBadge');
+      const statusDot = document.getElementById('statusDot');
+      const statusLabel = document.getElementById('statusLabel');
+      const helperInstruction = document.getElementById('helperInstruction');
+      const liveCaptureBox = document.getElementById('liveCaptureBox');
+      const liveTranscriptText = document.getElementById('liveTranscriptText');
+
+      const trySampleBtn = document.getElementById('trySampleBtn');
+      const toggleTypeNoteBtn = document.getElementById('toggleTypeNoteBtn');
+      const manualInputPanel = document.getElementById('manualInputPanel');
+      const manualTranscriptInput = document.getElementById('manualTranscriptInput');
+      const saveManualNoteBtn = document.getElementById('saveManualNoteBtn');
+      const cancelManualBtn = document.getElementById('cancelManualBtn');
+
+      const memoriesContainer = document.getElementById('memoriesContainer');
+      const memoryCountBadge = document.getElementById('memoryCountBadge');
+      const scheduledRemindersSection = document.getElementById('scheduledRemindersSection');
+      const scheduledRemindersList = document.getElementById('scheduledRemindersList');
+
+      const gentleReminderBanner = document.getElementById('gentleReminderBanner');
+      const reminderBannerTitle = document.getElementById('reminderBannerTitle');
+      const reminderBannerText = document.getElementById('reminderBannerText');
+      const readReminderAloudBtn = document.getElementById('readReminderAloudBtn');
+      const dismissReminderBtn = document.getElementById('dismissReminderBtn');
+
+      const notifPermissionBanner = document.getElementById('notifPermissionBanner');
+      const enableNotifBtn = document.getElementById('enableNotifBtn');
+      const statusToast = document.getElementById('statusToast');
+      const processingBarContainer = document.getElementById('processingBarContainer');
+      const processingBarLabel = document.getElementById('processingBarLabel');
+      const processingBarPercent = document.getElementById('processingBarPercent');
+      const processingBarFill = document.getElementById('processingBarFill');
+      const installAppBtn = document.getElementById('installAppBtn');
+      const openSettingsBtn = document.getElementById('openSettingsBtn');
+      const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+      const settingsModal = document.getElementById('settingsModal');
+      const pinGateSection = document.getElementById('pinGateSection');
+      const settingsControls = document.getElementById('settingsControls');
+      const pinInput = document.getElementById('pinInput');
+      const pinErrorMsg = document.getElementById('pinErrorMsg');
+      const unlockPinBtn = document.getElementById('unlockPinBtn');
+      const geminiApiKeyInput = document.getElementById('geminiApiKeyInput');
+      const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+      const voiceSelect = document.getElementById('voiceSelect');
+      const testVoiceBtn = document.getElementById('testVoiceBtn');
+      const triggerDemoReminderBtn = document.getElementById('triggerDemoReminderBtn');
+      const privacyToggle = document.getElementById('privacyToggle');
+      const pinLockToggle = document.getElementById('pinLockToggle');
+      const restoreSampleDataBtn = document.getElementById('restoreSampleDataBtn');
+
+      function openCaregiverModal() {
+        if (!settingsModal) return;
+        settingsModal.classList.remove('hidden');
+
+        if (geminiApiKeyInput) {
+          geminiApiKeyInput.value = settings.geminiApiKey || '';
+        }
+        if (privacyToggle) {
+          privacyToggle.checked = Boolean(settings.privacySummaryOnly);
+        }
+        if (pinLockToggle) {
+          pinLockToggle.checked = Boolean(settings.pinLockEnabled);
+        }
+
+        if (settings.pinLockEnabled) {
+          if (pinGateSection) pinGateSection.classList.remove('hidden');
+          if (settingsControls) settingsControls.classList.add('hidden');
+          if (pinErrorMsg) pinErrorMsg.classList.add('hidden');
+          if (pinInput) {
+            pinInput.value = '';
+            setTimeout(() => {
+              try { pinInput.focus(); } catch (e) {}
+            }, 80);
+          }
+        } else {
+          if (pinGateSection) pinGateSection.classList.add('hidden');
+          if (settingsControls) settingsControls.classList.remove('hidden');
+        }
+      }
+
+      function closeCaregiverModal() {
+        if (!settingsModal) return;
+        settingsModal.classList.add('hidden');
+      }
+
+      // Bind Caregiver button + delegated fallback so clicks always register on mobile & Netlify
+      if (openSettingsBtn) {
+        openSettingsBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openCaregiverModal();
+        });
+      }
+
+      document.addEventListener('click', (e) => {
+        const careBtn = e.target.closest && e.target.closest('#openSettingsBtn');
+        if (careBtn) {
+          e.preventDefault();
+          openCaregiverModal();
+        }
+      });
+
+      if (closeSettingsBtn) {
+        closeSettingsBtn.addEventListener('click', closeCaregiverModal);
+      }
+
+      if (settingsModal) {
+        settingsModal.addEventListener('click', (e) => {
+          if (e.target === settingsModal) {
+            closeCaregiverModal();
+          }
+        });
+      }
+
+      if (unlockPinBtn) {
+        unlockPinBtn.addEventListener('click', () => {
+          const entered = (pinInput && pinInput.value || '').trim();
+          if (entered === (settings.pinCode || '1234')) {
+            if (pinGateSection) pinGateSection.classList.add('hidden');
+            if (settingsControls) settingsControls.classList.remove('hidden');
+            if (pinErrorMsg) pinErrorMsg.classList.add('hidden');
+          } else {
+            if (pinErrorMsg) pinErrorMsg.classList.remove('hidden');
+          }
+        });
+      }
+
+      if (saveApiKeyBtn) {
+        saveApiKeyBtn.addEventListener('click', () => {
+          settings.geminiApiKey = (geminiApiKeyInput && geminiApiKeyInput.value || '').trim();
+          saveSettings();
+          showToast(settings.geminiApiKey ? 'Gemini API key saved.' : 'Gemini API key cleared.');
+        });
+      }
+
+      if (privacyToggle) {
+        privacyToggle.addEventListener('change', () => {
+          settings.privacySummaryOnly = privacyToggle.checked;
+          saveSettings();
+          showToast(settings.privacySummaryOnly ? 'Privacy mode ON (summary only).' : 'Raw transcript storage ON.');
+        });
+      }
+
+      if (pinLockToggle) {
+        pinLockToggle.addEventListener('change', () => {
+          settings.pinLockEnabled = pinLockToggle.checked;
+          saveSettings();
+          showToast(settings.pinLockEnabled ? 'PIN lock enabled (PIN: 1234).' : 'PIN lock disabled.');
+        });
+      }
+
+      if (restoreSampleDataBtn) {
+        restoreSampleDataBtn.addEventListener('click', () => {
+          memories = STARTER_MEMORIES.map((m) => ({ ...m, id: 'starter-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) }));
+          saveMemories();
+          renderMemories();
+          closeCaregiverModal();
+          showToast('Starter sample memories restored.');
+        });
+      }
+
+      // =========================================================================
+      // 3. STORAGE, UI HELPERS & SUMMARIZATION
+      // =========================================================================
+      function loadState() {
+        try {
+          const savedSettings = localStorage.getItem(SETTINGS_KEY);
+          if (savedSettings) {
+            settings = { ...settings, ...JSON.parse(savedSettings) };
+          }
+        } catch (e) {}
+
+        try {
+          const savedMemories = localStorage.getItem(STORAGE_KEY);
+          if (savedMemories) {
+            const parsed = JSON.parse(savedMemories);
+            if (Array.isArray(parsed)) {
+              memories = parsed;
+              return;
+            }
+          }
+        } catch (e) {}
+
+        memories = STARTER_MEMORIES.map((m) => ({ ...m }));
+        saveMemories();
+      }
+
+      function saveSettings() {
+        try {
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        } catch (e) {}
+      }
+
+      function saveMemories() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(memories));
+        } catch (e) {}
+      }
+
+      let toastTimeout = null;
+      function showToast(message) {
+        if (!statusToast) return;
+        statusToast.textContent = message;
+        statusToast.classList.remove('hidden');
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+          statusToast.classList.add('hidden');
+        }, 4200);
+      }
+
+      function setProcessingBar(active, label = 'Processing...', percent = 35) {
+        if (!processingBarContainer) return;
+        if (!active) {
+          processingBarContainer.classList.add('hidden');
+          return;
+        }
+        processingBarContainer.classList.remove('hidden');
+        if (processingBarLabel) processingBarLabel.textContent = label;
+        if (processingBarPercent) processingBarPercent.textContent = `${percent}%`;
+        if (processingBarFill) processingBarFill.style.width = `${percent}%`;
+      }
+
+      function updateListeningUI(active) {
+        if (active) {
+          recordToggleBtn.classList.remove('bg-tealCalm-600', 'hover:bg-tealCalm-700');
+          recordToggleBtn.classList.add('bg-red-600', 'hover:bg-red-700', 'listening-pulse');
+          micIcon.classList.add('hidden');
+          stopIcon.classList.remove('hidden');
+          recordBtnText.innerHTML = 'Stop &<br/>Save';
+          statusBadge.className = 'inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-950/90 text-red-200 border border-red-700/60 font-bold text-base mb-5';
+          statusDot.className = 'w-3 h-3 rounded-full bg-red-400 animate-ping';
+          statusLabel.textContent = 'Listening Continuously';
+          helperInstruction.textContent = 'Speak naturally. Tap the red button when finished.';
+          liveCaptureBox.classList.remove('hidden');
+        } else {
+          recordToggleBtn.classList.remove('bg-red-600', 'hover:bg-red-700', 'listening-pulse');
+          recordToggleBtn.classList.add('bg-tealCalm-600', 'hover:bg-tealCalm-700');
+          micIcon.classList.remove('hidden');
+          stopIcon.classList.add('hidden');
+          recordBtnText.innerHTML = 'Start<br/>Listening';
+          statusBadge.className = 'inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-950/80 text-teal-200 border border-teal-700/60 font-bold text-base mb-5';
+          statusDot.className = 'w-3 h-3 rounded-full bg-teal-400';
+          statusLabel.textContent = 'Ready to Listen';
+          helperInstruction.textContent = 'Tap the green circle when someone starts talking with you.';
+          liveCaptureBox.classList.add('hidden');
+        }
+      }
+
+      function buildLocalFallbackSummary(text) {
+        const clean = text.replace(/\s+/g, ' ').trim();
+        const nameMatch = clean.match(/\b(?:with|from|it'?s|i'?m|name is)\s+([A-Z][a-z]+)\b/i);
+        const speaker = nameMatch ? nameMatch[1] : '';
+        const title = speaker ? `Conversation with ${speaker}` : 'Captured Conversation';
+        const summary = clean.length > 180 ? clean.slice(0, 177).trim() + '...' : clean;
+        const actionItem = /medicine|tablet|pharmacy|doctor|checkup|appointment|call|pick/i.test(clean)
+          ? clean.split(/[.!?]/).find((s) => /medicine|tablet|pharmacy|doctor|checkup|appointment|call|pick/i.test(s))?.trim() || 'Follow up on today’s conversation'
+          : 'Review key details from this conversation';
+
+        return {
+          title,
+          summary,
+          actionItem,
+          suggestedReminderMinutes: 0
+        };
+      }
+
+      async function summarizeWithGemini(transcriptText) {
+        const apiKey = (settings.geminiApiKey || '').trim();
+        if (!apiKey) {
+          showToast('Offline backup used. Add Gemini API key in Caregiver for AI summaries.');
+          return buildLocalFallbackSummary(transcriptText);
+        }
+
+        const prompt = `Summarize this conversation calmly and clearly for an older adult or memory-care user.
+Return STRICTLY JSON with keys:
+- "title": short 3-6 word title
+- "summary": 1-2 calm, clear sentences
+- "actionItem": short next step or takeaway
+- "suggestedReminderMinutes": integer (0 if no immediate reminder needed, or e.g. 15)
+
+Conversation:
+${transcriptText}`;
+
+        const models = ['gemini-3.1-flash-lite', 'gemini-3-flash-preview'];
+        let lastErrorReason = 'request timed out';
+
+        for (const model of models) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            const resp = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              signal: controller.signal,
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                  responseMimeType: 'application/json'
+                }
+              })
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!resp.ok) {
+              lastErrorReason = `HTTP ${resp.status}`;
+              continue;
+            }
+
+            const data = await resp.json();
+            const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawText);
+
+            if (parsed && parsed.summary) {
+              return {
+                title: String(parsed.title || 'Captured Conversation').trim(),
+                summary: String(parsed.summary).trim(),
+                actionItem: String(parsed.actionItem || 'Keep this note handy').trim(),
+                suggestedReminderMinutes: Number(parsed.suggestedReminderMinutes) || 0
+              };
+            }
+          } catch (err) {
+            clearTimeout(timeoutId);
+            lastErrorReason = err && err.name === 'AbortError' ? 'request timed out' : (err?.message || 'network error');
+          }
+        }
+
+        showToast(`Fallback used (${lastErrorReason}). Check Gemini API in Caregiver.`);
+        return buildLocalFallbackSummary(transcriptText);
+      }
+
+      async function processConversation(rawText, alreadyTranscribed = false) {
+        const cleanText = String(rawText || '').trim();
+        if (!cleanText) return;
+
+        setProcessingBar(true, alreadyTranscribed ? 'Summarizing voice note...' : 'Creating calm summary...', 75);
+        try {
+          const aiResult = await summarizeWithGemini(cleanText);
+          setProcessingBar(true, 'Saving memory card...', 100);
+
+          const memoryCard = {
+            id: 'mem-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+            timestamp: Date.now(),
+            title: aiResult.title,
+            summary: aiResult.summary,
+            actionItem: aiResult.actionItem,
+            rawTranscript: settings.privacySummaryOnly ? null : cleanText,
+            reminderTime: null,
+            reminderLabel: null
+          };
+
+          memories.unshift(memoryCard);
+          saveMemories();
+          renderMemories();
+          showToast('Saved to Recent Memories.');
+        } catch (err) {
+          showToast('Could not save memory. Please try again.');
+        } finally {
+          setTimeout(() => setProcessingBar(false), 350);
+        }
+      }
+
+      // =========================================================================
+      // 4. REMINDERS, VOICE (READ ALOUD) & RENDERING
+      // =========================================================================
+      function speakText(text) {
+        if (!('speechSynthesis' in window)) {
+          showToast('Read Aloud is not supported on this browser.');
+          return;
+        }
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          const voices = window.speechSynthesis.getVoices();
+          const chosen = voices.find((v) => v.voiceURI === settings.selectedVoiceURI)
+            || voices.find((v) => /en-IN/i.test(v.lang))
+            || voices[0];
+          if (chosen) utterance.voice = chosen;
+          utterance.rate = 0.95;
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {
+          showToast('Unable to play voice right now.');
+        }
+      }
+
+      function populateVoices() {
+        if (!voiceSelect || !('speechSynthesis' in window)) return;
+        const voices = window.speechSynthesis.getVoices() || [];
+        if (!voices.length) return;
+
+        voiceSelect.innerHTML = '';
+        voices.forEach((v) => {
+          const opt = document.createElement('option');
+          opt.value = v.voiceURI;
+          opt.textContent = `${v.name} (${v.lang})`;
+          voiceSelect.appendChild(opt);
+        });
+
+        const preferred = voices.find((v) => v.voiceURI === settings.selectedVoiceURI)
+          || voices.find((v) => /en-IN/i.test(v.lang))
+          || voices[0];
+
+        if (preferred) {
+          settings.selectedVoiceURI = preferred.voiceURI;
+          voiceSelect.value = preferred.voiceURI;
+        }
+      }
+
+      function triggerGentleReminder(title, message) {
+        if (gentleReminderBanner) {
+          reminderBannerTitle.textContent = title || 'Gentle Reminder';
+          reminderBannerText.textContent = message || 'Here is a calm reminder from your notes.';
+          gentleReminderBanner.classList.remove('hidden');
+        }
+        speakText(`${title || 'Gentle Reminder'}. ${message || ''}`);
+      }
+
+      function scheduleMemoryReminder(memoryId, minutes) {
+        const mem = memories.find((m) => m.id === memoryId);
+        if (!mem) return;
+
+        const targetTime = Date.now() + minutes * 60 * 1000;
+        mem.reminderTime = targetTime;
+        mem.reminderLabel = `${minutes} min`;
+        saveMemories();
+        renderMemories();
+        renderScheduledReminders();
+
+        if (activeTimers[memoryId]) {
+          clearTimeout(activeTimers[memoryId]);
+        }
+
+        activeTimers[memoryId] = setTimeout(() => {
+          mem.reminderTime = null;
+          mem.reminderLabel = null;
+          saveMemories();
+          renderMemories();
+          renderScheduledReminders();
+          triggerGentleReminder(mem.title, mem.actionItem || mem.summary);
+        }, minutes * 60 * 1000);
+
+        showToast(`Reminder set for ${minutes} minute${minutes > 1 ? 's' : ''}.`);
+      }
+
+      function renderScheduledReminders() {
+        if (!scheduledRemindersSection || !scheduledRemindersList) return;
+        const pending = memories.filter((m) => m.reminderTime && m.reminderTime > Date.now());
+        if (!pending.length) {
+          scheduledRemindersSection.classList.add('hidden');
+          scheduledRemindersList.innerHTML = '';
+          return;
+        }
+
+        scheduledRemindersSection.classList.remove('hidden');
+        scheduledRemindersList.innerHTML = pending.map((m) => {
+          const minsLeft = Math.max(1, Math.ceil((m.reminderTime - Date.now()) / 60000));
+          return `
+            <div class="p-3.5 rounded-2xl bg-amberWarm-50 text-slate-900 border border-amberWarm-600/40 flex items-center justify-between gap-3">
+              <div>
+                <p class="font-bold text-base">${escapeHtml(m.title)}</p>
+                <p class="text-sm text-slate-700">${escapeHtml(m.actionItem || m.summary)}</p>
+              </div>
+              <span class="shrink-0 px-3 py-1 rounded-xl bg-amberWarm-100 text-amberWarm-700 font-bold text-sm">
+                In ~${minsLeft}m
+              </span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function formatTimeLabel(ts) {
+        try {
+          return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+          return 'Recently';
+        }
+      }
+
+      function renderMemories() {
+        if (!memoriesContainer) return;
+        if (memoryCountBadge) {
+          memoryCountBadge.textContent = `${memories.length} saved`;
+        }
+
+        if (!memories.length) {
+          memoriesContainer.innerHTML = `
+            <div class="p-6 rounded-3xl bg-[#152642] border border-slate-700/70 text-center space-y-2">
+              <p class="text-lg font-bold text-white">No memories saved yet</p>
+              <p class="text-sm text-sky-200/80">Tap Start Listening, Try Sample Talk, or Type / Paste Note to create your first memory card.</p>
+            </div>
+          `;
+          return;
+        }
+
+        memoriesContainer.innerHTML = memories.map((m) => `
+          <article class="p-5 rounded-3xl bg-white text-slate-900 shadow-lg border border-cream-200 space-y-3">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="text-xl font-extrabold text-slate-900 leading-snug">${escapeHtml(m.title)}</h3>
+              <span class="shrink-0 text-xs font-bold px-2.5 py-1 rounded-lg bg-cream-100 text-slate-700">
+                ${escapeHtml(formatTimeLabel(m.timestamp))}
+              </span>
+            </div>
+            <p class="text-base text-slate-800 leading-relaxed">${escapeHtml(m.summary)}</p>
+            ${m.actionItem ? `
+              <div class="p-3 rounded-2xl bg-tealCalm-50 border border-tealCalm-600/30">
+                <span class="block text-xs font-extrabold uppercase tracking-wider text-tealCalm-800 mb-0.5">Next Step</span>
+                <p class="text-base font-bold text-tealCalm-900">${escapeHtml(m.actionItem)}</p>
+              </div>
+            ` : ''}
+            <div class="pt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                data-speak-id="${escapeHtml(m.id)}"
+                class="px-4 py-2.5 rounded-xl bg-tealCalm-700 hover:bg-tealCalm-800 text-white font-bold text-sm active:scale-95 transition"
+              >
+                🔊 Read Aloud
+              </button>
+              <button
+                type="button"
+                data-remind-id="${escapeHtml(m.id)}"
+                data-remind-mins="10"
+                class="px-3.5 py-2.5 rounded-xl bg-amberWarm-100 hover:bg-amberWarm-600 hover:text-white text-amberWarm-700 font-bold text-sm active:scale-95 transition"
+              >
+                ⏰ Remind in 10m
+              </button>
+              <button
+                type="button"
+                data-delete-id="${escapeHtml(m.id)}"
+                class="px-3.5 py-2.5 rounded-xl bg-cream-100 hover:bg-red-100 text-slate-700 hover:text-red-700 font-bold text-sm active:scale-95 transition ml-auto"
+              >
+                Delete
+              </button>
+            </div>
+          </article>
+        `).join('');
+      }
+
+      // =========================================================================
+      // 5. EVENT LISTENERS & INITIALIZATION
+      // =========================================================================
+      function bindEvents() {
+        if (recordToggleBtn) {
+          recordToggleBtn.addEventListener('click', () => {
+            if (isListening) {
+              stopListening(true);
+            } else {
+              startListening();
+            }
+          });
+        }
+
+        if (trySampleBtn) {
+          trySampleBtn.addEventListener('click', () => {
+            const text = SAMPLE_CONVERSATIONS[sampleIndex % SAMPLE_CONVERSATIONS.length];
+            sampleIndex += 1;
+            processConversation(text);
+          });
+        }
+
+        if (toggleTypeNoteBtn) {
+          toggleTypeNoteBtn.addEventListener('click', () => {
+            manualInputPanel.classList.toggle('hidden');
+            if (!manualInputPanel.classList.contains('hidden')) {
+              manualTranscriptInput.focus();
+            }
+          });
+        }
+
+        if (cancelManualBtn) {
+          cancelManualBtn.addEventListener('click', () => {
+            manualInputPanel.classList.add('hidden');
+            manualTranscriptInput.value = '';
+          });
+        }
+
+        if (saveManualNoteBtn) {
+          saveManualNoteBtn.addEventListener('click', () => {
+            const val = (manualTranscriptInput.value || '').trim();
+            if (!val) {
+              showToast('Please type or paste a conversation first.');
+              return;
+            }
+            manualTranscriptInput.value = '';
+            manualInputPanel.classList.add('hidden');
+            processConversation(val);
+          });
+        }
+
+        if (memoriesContainer) {
+          memoriesContainer.addEventListener('click', (e) => {
+            const speakBtn = e.target.closest('[data-speak-id]');
+            if (speakBtn) {
+              const mem = memories.find((m) => m.id === speakBtn.getAttribute('data-speak-id'));
+              if (mem) speakText(`${mem.title}. ${mem.summary}. Next step: ${mem.actionItem || ''}`);
+              return;
+            }
+
+            const remindBtn = e.target.closest('[data-remind-id]');
+            if (remindBtn) {
+              scheduleMemoryReminder(
+                remindBtn.getAttribute('data-remind-id'),
+                Number(remindBtn.getAttribute('data-remind-mins')) || 10
+              );
+              return;
+            }
+
+            const delBtn = e.target.closest('[data-delete-id]');
+            if (delBtn) {
+              const delId = delBtn.getAttribute('data-delete-id');
+              memories = memories.filter((m) => m.id !== delId);
+              saveMemories();
+              renderMemories();
+              renderScheduledReminders();
+              showToast('Memory removed.');
+            }
+          });
+        }
+
+        if (readReminderAloudBtn) {
+          readReminderAloudBtn.addEventListener('click', () => {
+            speakText(`${reminderBannerTitle.textContent}. ${reminderBannerText.textContent}`);
+          });
+        }
+
+        if (dismissReminderBtn) {
+          dismissReminderBtn.addEventListener('click', () => {
+            gentleReminderBanner.classList.add('hidden');
+          });
+        }
+
+        if (triggerDemoReminderBtn) {
+          triggerDemoReminderBtn.addEventListener('click', () => {
+            closeCaregiverModal();
+            triggerGentleReminder('Evening Check-In', 'Priya mentioned picking you up at 10:00 AM for Dr. Sharma’s appointment.');
+          });
+        }
+
+        if (voiceSelect) {
+          voiceSelect.addEventListener('change', () => {
+            settings.selectedVoiceURI = voiceSelect.value;
+            saveSettings();
+          });
+        }
+
+        if (testVoiceBtn) {
+          testVoiceBtn.addEventListener('click', () => {
+            speakText('Namaste! This is Memory Mate speaking in your selected voice.');
+          });
+        }
+
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.onvoiceschanged = populateVoices;
+        }
+
+        if ('Notification' in window && Notification.permission === 'default' && notifPermissionBanner) {
+          notifPermissionBanner.classList.remove('hidden');
+        }
+
+        if (enableNotifBtn) {
+          enableNotifBtn.addEventListener('click', async () => {
+            try {
+              const perm = await Notification.requestPermission();
+              notifPermissionBanner.classList.add('hidden');
+              showToast(perm === 'granted' ? 'Gentle alerts enabled.' : 'Alerts skipped.');
+            } catch (e) {}
+          });
+        }
+
+        // Upgrade PWA manifest to a Blob URL for older Android Chrome compatibility
+        try {
+          const manifestLink = document.getElementById('pwaManifestLink');
+          const manifestData = {
+            name: 'Memory Mate',
+            short_name: 'Memory Mate',
+            start_url: '.',
+            display: 'standalone',
+            background_color: '#0B1528',
+            theme_color: '#0B1528',
+            icons: [
+              { src: 'https://placehold.co/192x192/0F766E/FFFFFF?text=MM', sizes: '192x192', type: 'image/png' },
+              { src: 'https://placehold.co/512x512/0F766E/FFFFFF?text=MM', sizes: '512x512', type: 'image/png' }
+            ]
+          };
+          const blob = new Blob([JSON.stringify(manifestData)], { type: 'application/manifest+json' });
+          if (manifestLink) {
+            manifestLink.href = URL.createObjectURL(blob);
+          }
+        } catch (e) {}
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          window.deferredPrompt = e;
+          if (installAppBtn) installAppBtn.classList.remove('hidden');
+        });
+
+        if (installAppBtn) {
+          installAppBtn.addEventListener('click', async () => {
+            if (!window.deferredPrompt) return;
+            window.deferredPrompt.prompt();
+            await window.deferredPrompt.userChoice;
+            window.deferredPrompt = null;
+            installAppBtn.classList.add('hidden');
+          });
+        }
+      }
+
+      function init() {
+        if (todayDateLabel) {
+          todayDateLabel.textContent = new Date().toLocaleDateString(undefined, {
+            weekday: 'long',
+            month: 'short',
+            day: 'numeric'
+          });
+        }
+        loadState();
+        setupSpeechRecognition();
+        bindEvents();
+        populateVoices();
+        renderMemories();
+        renderScheduledReminders();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+</body>
+</html>
+
